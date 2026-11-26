@@ -22,6 +22,7 @@ export type Theme = ExtensionContext["ui"]["theme"];
 
 const TPS_LABEL = "TPS";
 const TTFT_LABEL = "TTFT";
+const DURATION_LABEL = "TIME";
 export const RATE_UNIT = "tok/s";
 /** TTFT unit below one second. */
 export const TTFT_UNIT_MS = "ms";
@@ -62,6 +63,14 @@ export interface TtftView {
   streaming?: boolean;
   /** Whether `ms` belongs to the response being streamed. See {@link TpsView.measured}. */
   measured?: boolean;
+}
+
+/** State of the duration segment. */
+export interface DurationView {
+  /** Elapsed time in milliseconds; omitted when nothing has been measured. */
+  ms?: number;
+  /** While true the clock is running and the reading shows in normal text. */
+  active?: boolean;
 }
 
 /**
@@ -165,6 +174,35 @@ export function formatTtft(theme: Theme, view: TtftView): string {
     ? ttftColor(theme, display)
     : theme.fg("dim", display.value);
   return [label, `${number}${theme.fg("dim", display.unit)}`].join(" ");
+}
+
+/**
+ * Elapsed milliseconds → whole seconds, and `1m12s` past the minute. `null`
+ * when there is no reading to show. The number is floored, so the row never
+ * shows a second that has not fully elapsed.
+ */
+export function durationDisplay(ms: number): string | null {
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const total = Math.floor(ms / 1000);
+  if (total < 60) return `${total}s`;
+  const minutes = Math.floor(total / 60);
+  return `${minutes}m${String(total % 60).padStart(2, "0")}s`;
+}
+
+/** The duration segment, e.g. `TIME 4s`, `TIME 1m12s` or `TIME — s`. */
+export function formatDuration(theme: Theme, view: DurationView): string {
+  // The label follows its value: a running clock reads as one lit segment, and
+  // the whole segment dims when it freezes.
+  const label = theme.fg(view.active ? "text" : "dim", DURATION_LABEL);
+  const text = view.ms === undefined ? null : durationDisplay(view.ms);
+  if (text === null) {
+    return [label, theme.fg("dim", `${NO_VALUE} s`)].join(" ");
+  }
+
+  // Not a quality signal, so no colour buckets: while the clock runs it reads
+  // as normal text, and the frozen reading dims with the rest of the idle row.
+  const value = view.active ? theme.fg("text", text) : theme.fg("dim", text);
+  return [label, value].join(" ");
 }
 
 /** Join already-formatted segments with the row's dim separator. */

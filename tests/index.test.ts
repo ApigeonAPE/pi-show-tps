@@ -1,5 +1,5 @@
 /**
- * Extension wiring: which events are registered, and what `/token-rate` does.
+ * Extension wiring: which events are registered, and what `/tps` does.
  */
 
 import assert from "node:assert/strict";
@@ -68,17 +68,20 @@ function makePi(): {
 }
 
 describe("extension", () => {
-  it("registers the message lifecycle and the slash command", () => {
+  it("registers the run, message lifecycle and the slash command", () => {
     const { pi, handlers, commands } = makePi();
     extension(pi);
 
     expect([...handlers.keys()].sort()).toEqual([
+      "agent_end",
+      "agent_start",
       "message_end",
       "message_start",
       "message_update",
+      "session_shutdown",
       "session_start",
     ]);
-    expect([...commands.keys()]).toEqual(["token-rate"]);
+    expect([...commands.keys()]).toEqual(["tps"]);
   });
 
   it("routes the message lifecycle into the status row", (t) => {
@@ -112,17 +115,17 @@ describe("extension", () => {
   it("toggles from the command and rejects arguments", async () => {
     const { pi, commands, notifications, ctx } = makePi();
     extension(pi);
-    const command = commands.get("token-rate");
+    const command = commands.get("tps");
     assert.ok(command);
     const commandCtx = ctx as unknown as ExtensionCommandContext;
 
     await command.handler("", commandCtx);
-    expect(notifications.pop()).toBe("token-rate: status line off");
+    expect(notifications.pop()).toBe("tps: status line off");
 
     await command.handler("", commandCtx);
-    expect(notifications.pop()).toBe("token-rate: status line on");
+    expect(notifications.pop()).toBe("tps: status line on");
 
     await command.handler("nope", commandCtx);
-    expect(notifications.pop()).toBe("token-rate: /token-rate");
+    expect(notifications.pop()).toBe("tps: /tps");
   });
 });

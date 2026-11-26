@@ -1,7 +1,7 @@
 {
   "name": "pi-show-token-rate",
   "version": "0.3.0",
-  "description": "Shows the live output token rate (tok/s) and time to first token (TTFT) of the current model in the pi TUI status bar.",
+  "description": "Shows the live output token rate (tok/s), time to first token (TTFT) and elapsed response time of the current model in the pi TUI status bar.",
   "keywords": [
     "pi-package",
     "pi-extension",
@@ -9,6 +9,7 @@
     "token-rate",
     "tps",
     "ttft",
+    "elapsed",
     "tui"
   ],
   "license": "MIT",
@@ -39,12 +40,10 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm typecheck && pnpm test",
     "format": "biome format --write",
-    "md:format": "prettier --write \"**/*.md\"",
     "lint": "biome lint",
     "check": "biome check",
-    "md:check": "prettier --check \"**/*.md\"",
     "fix": "biome check --write",
-    "verify": "pnpm typecheck && pnpm check && pnpm md:check && pnpm test"
+    "verify": "pnpm typecheck && pnpm check && pnpm test"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
@@ -53,7 +52,6 @@
     "@biomejs/biome": "2.5.14",
     "@earendil-works/pi-coding-agent": "^1.6.1",
     "@types/node": "^26.6.1",
-    "prettier": "3.9.8",
     "typescript": "^7.0.2"
   }
 }

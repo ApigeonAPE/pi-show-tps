@@ -1,5 +1,0 @@
-pi-show-token-rate@0.3.0:
-  dir: .
-  intents:
-    - token-rate-tighter-status-line
-    - token-rate-ttft

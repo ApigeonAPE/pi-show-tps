@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { beforeEach, describe, it } from "node:test";
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
@@ -68,20 +68,26 @@ function stream(
 }
 
 const LIVE_ROW =
-  "[dim]TPS[/] [success]200[/] [dim]tok/s[/] [dim]·[/] [dim]TTFT[/] [success]100[/][dim]ms[/]";
+  "[dim]TPS[/] [success]200[/] [dim]tok/s[/] [dim]·[/] [dim]TTFT[/] [success]100[/][dim]ms[/] [dim]·[/] [text]TIME[/] [text]0s[/]";
 const FROZEN_ROW =
-  "[dim]TPS[/] [dim]200[/] [dim]tok/s[/] [dim]·[/] [dim]TTFT[/] [dim]100[/][dim]ms[/]";
+  "[dim]TPS[/] [dim]200[/] [dim]tok/s[/] [dim]·[/] [dim]TTFT[/] [dim]100[/][dim]ms[/] [dim]·[/] [dim]TIME[/] [dim]0s[/]";
 const EMPTY_ROW =
-  "[dim]TPS[/] [dim]— tok/s[/] [dim]·[/] [dim]TTFT[/] [dim]— ms[/]";
+  "[dim]TPS[/] [dim]— tok/s[/] [dim]·[/] [dim]TTFT[/] [dim]— ms[/] [dim]·[/] [dim]TIME[/] [dim]— s[/]";
 
 describe("MetricsLine", () => {
+  // The row owns a repaint interval; mock it so no test leaves a live timer
+  // behind and keeps the process alive after the assertions are done.
+  beforeEach((t) => {
+    // A suite context has no `mock`; the per-test context does.
+    if ("mock" in t) t.mock.timers.enable({ apis: ["setInterval"] });
+  });
   it("clears any leftover row on session start", () => {
     const { ctx, writes } = makeCtx();
     new MetricsLine().start(ctx);
     expect(writes).toEqual([{ key: "token-rate", text: undefined }]);
   });
 
-  it("paints TPS then TTFT on one row while the model streams", () => {
+  it("paints TPS, TTFT and elapsed time on one row while the model streams", () => {
     const { ctx, writes } = makeCtx();
     const clock = { now: 0 };
     const line = new MetricsLine(() => clock.now);
@@ -106,11 +112,11 @@ describe("MetricsLine", () => {
     line.onUpdate(ctx, makeTextUpdate(message, 6));
 
     expect(lastText(writes)).toBe(
-      "[dim]TPS[/] [dim]— tok/s[/] [dim]·[/] [dim]TTFT[/] [success]250[/][dim]ms[/]",
+      "[dim]TPS[/] [dim]— tok/s[/] [dim]·[/] [dim]TTFT[/] [success]250[/][dim]ms[/] [dim]·[/] [text]TIME[/] [text]0s[/]",
     );
   });
 
-  it("dims both readings once the response ends", () => {
+  it("dims every reading once the response ends", () => {
     const { ctx, writes } = makeCtx();
     const clock = { now: 0 };
     const line = new MetricsLine(() => clock.now);
@@ -121,6 +127,96 @@ describe("MetricsLine", () => {
     line.onMessageEnd(ctx, makeMessageEnd(message, 100).message);
 
     expect(lastText(writes)).toBe(FROZEN_ROW);
+  });
+
+  it("counts the elapsed reading up while no token arrives", (t) => {
+    const { ctx, writes } = makeCtx();
+    const clock = { now: 0 };
+    const line = new MetricsLine(() => clock.now);
+    const message = makeAssistantMessage();
+
+    clock.now = 1_000;
+    line.onMessageStart(ctx, { ...message, timestamp: 1_000 });
+    // 3.4s pass without a single stream event: only the repaint tick moves it.
+    clock.now = 4_400;
+    t.mock.timers.tick(250);
+
+    expect(lastText(writes)).toContain("[text]3s[/]");
+  });
+
+  it("freezes whole seconds at the end and stops ticking", (t) => {
+    const { ctx, writes } = makeCtx();
+    const clock = { now: 0 };
+    const line = new MetricsLine(() => clock.now);
+    const message = makeAssistantMessage();
+
+    clock.now = 1_000;
+    line.onMessageStart(ctx, { ...message, timestamp: 1_000 });
+    clock.now = 73_000;
+    line.onMessageEnd(ctx, makeMessageEnd(message, 100).message);
+    expect(lastText(writes)).toContain("[dim]1m12s[/]");
+
+    writes.length = 0;
+    clock.now = 99_000;
+    t.mock.timers.tick(1_000);
+    expect(writes).toEqual([]);
+  });
+
+  it("times the whole run, not each response inside it", (t) => {
+    const { ctx, writes } = makeCtx();
+    const clock = { now: 0 };
+    const line = new MetricsLine(() => clock.now);
+    const message = makeAssistantMessage();
+
+    clock.now = 1_000;
+    line.onAgentStart(ctx);
+    // The first request starts 4s into the run (queueing, a slow tool, ...).
+    clock.now = 5_000;
+    line.onMessageStart(ctx, { ...message, timestamp: 5_000 });
+    clock.now = 7_000;
+    line.onMessageEnd(ctx, makeMessageEnd(message, 100).message);
+
+    // A tool runs: no stream events, but the run clock keeps ticking.
+    clock.now = 9_000;
+    t.mock.timers.tick(250);
+
+    expect(lastText(writes)).toContain("[text]8s[/]");
+  });
+
+  it("freezes the run reading and stops ticking at agent_end", (t) => {
+    const { ctx, writes } = makeCtx();
+    const clock = { now: 0 };
+    const line = new MetricsLine(() => clock.now);
+    const message = makeAssistantMessage();
+
+    clock.now = 1_000;
+    line.onAgentStart(ctx);
+    line.onMessageStart(ctx, { ...message, timestamp: 1_000 });
+    clock.now = 4_000;
+    line.onMessageEnd(ctx, makeMessageEnd(message, 100).message);
+
+    clock.now = 5_000;
+    line.onAgentEnd(ctx);
+    expect(lastText(writes)).toContain("[dim]4s[/]");
+
+    writes.length = 0;
+    clock.now = 60_000;
+    t.mock.timers.tick(1_000);
+    expect(writes).toEqual([]);
+  });
+
+  it("releases the tick when the session stops", (t) => {
+    const { ctx, writes } = makeCtx();
+    const clock = { now: 0 };
+    const line = new MetricsLine(() => clock.now);
+
+    clock.now = 1_000;
+    line.onMessageStart(ctx, makeAssistantMessage());
+    line.stop();
+    clock.now = 6_000;
+    t.mock.timers.tick(1_000);
+
+    expect(writes).toEqual([]);
   });
 
   it("shows both placeholders when a response measured nothing", () => {

@@ -1,11 +1,7 @@
 node_modules/
 dist/
 *.log
-.DS_Store
 .env
 .env.*
 coverage/
 *.tsbuildinfo
-
-# 本地计划文档，不纳入版本管理
-PLAN.md

@@ -24,8 +24,20 @@ export type AssistantMessage = Extract<
 >;
 
 export interface Metric {
+  /**
+   * Whether this segment keeps changing without new stream events. A stopwatch
+   * does, so the controller repaints it on a tick while a response streams.
+   */
+  readonly ticksWhileStreaming?: boolean;
   /** Forget everything, e.g. at session start. */
   reset(): void;
+  /**
+   * A user request starts the agent run, before the first request of the run.
+   * A metric that measures the whole run rather than one response anchors here.
+   */
+  onAgentStart?(now: number): void;
+  /** The run is over; a run-scoped metric freezes its reading here. */
+  onAgentEnd?(now: number): void;
   /** A new assistant response begins; per-response state resets here. */
   onMessageStart(message: AssistantMessage): void;
   /**

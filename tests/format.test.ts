@@ -6,6 +6,8 @@
 import { describe, it } from "node:test";
 
 import {
+  durationDisplay,
+  formatDuration,
   formatRate,
   formatTps,
   formatTtft,
@@ -171,6 +173,43 @@ describe("formatTtft", () => {
     // 999.6 rounds to 1000ms and so prints as 1.0s (yellow), never "1000ms".
     expect(formatTtft(theme, { ms: 999.6, streaming: true })).toBe(
       "[dim]TTFT[/] [warning]1.0[/][dim]s[/]",
+    );
+  });
+});
+
+describe("durationDisplay", () => {
+  it("shows whole seconds, floored", () => {
+    expect(durationDisplay(0)).toBe("0s");
+    expect(durationDisplay(999)).toBe("0s");
+    expect(durationDisplay(1_000)).toBe("1s");
+    expect(durationDisplay(4_900)).toBe("4s");
+    expect(durationDisplay(59_999)).toBe("59s");
+  });
+
+  it("switches to minutes at sixty seconds", () => {
+    expect(durationDisplay(60_000)).toBe("1m00s");
+    expect(durationDisplay(72_400)).toBe("1m12s");
+    expect(durationDisplay(3_661_000)).toBe("61m01s");
+  });
+
+  it("returns null for values that are not elapsed times", () => {
+    expect(durationDisplay(-1)).toBeNull();
+    expect(durationDisplay(Number.NaN)).toBeNull();
+  });
+});
+
+describe("formatDuration", () => {
+  it("shows a placeholder before anything was measured", () => {
+    expect(formatDuration(theme, {})).toBe("[dim]TIME[/] [dim]— s[/]");
+  });
+
+  it("keeps the label dim and shows live time in the text colour", () => {
+    expect(formatDuration(theme, { ms: 4_200, active: true })).toBe(
+      "[text]TIME[/] [text]4s[/]",
+    );
+    // Idle readings dim with the rest of the row.
+    expect(formatDuration(theme, { ms: 72_400 })).toBe(
+      "[dim]TIME[/] [dim]1m12s[/]",
     );
   });
 });
