@@ -1,26 +1,59 @@
 {
-  "name": "pi-extensions-workspace",
-  "private": true,
-  "description": "pnpm workspace hosting multiple pi coding-agent extensions.",
+  "name": "pi-show-token-rate",
+  "version": "0.3.0",
+  "description": "Shows the live output token rate (tok/s) and time to first token (TTFT) of the current model in the pi TUI status bar.",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "tokens",
+    "token-rate",
+    "tps",
+    "ttft",
+    "tui"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ApigeonAPE/pi-show-tps.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ApigeonAPE/pi-show-tps/issues"
+  },
+  "homepage": "https://github.com/ApigeonAPE/pi-show-tps#readme",
   "type": "module",
   "engines": {
-    "node": ">=26"
+    "node": ">=24"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
   },
   "scripts": {
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "test": "node --test",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm typecheck && pnpm test",
     "format": "biome format --write",
     "md:format": "prettier --write \"**/*.md\"",
     "lint": "biome lint",
     "check": "biome check",
     "md:check": "prettier --check \"**/*.md\"",
     "fix": "biome check --write",
-    "verify": "pnpm -r typecheck && pnpm check && pnpm md:check && pnpm -r test"
+    "verify": "pnpm typecheck && pnpm check && pnpm md:check && pnpm test"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
+    "@earendil-works/pi-coding-agent": "^1.6.1",
     "@types/node": "^26.6.1",
-    "prettier": "3.9.8"
+    "prettier": "3.9.8",
+    "typescript": "^7.0.2"
   }
 }

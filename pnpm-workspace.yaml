@@ -1,10 +1,7 @@
-packages:
-  - "packages/*"
-# Native release management, driven by `pnpm change` + `pnpm version -r`.
-# Every package keeps its own version (no fixed groups, no epics, no lanes),
-# and changelogs live on the registry instead of committed CHANGELOG.md files.
+# 单包仓库：不再有 workspace 成员，仅保留 pnpm 原生发布配置。
+packages: []
+# 依赖构建许可：protobufjs（pi 的传递依赖）的构建脚本不需要运行。
 allowBuilds:
-  '@google/genai': false
   esbuild: true
   protobufjs: false
 versioning:

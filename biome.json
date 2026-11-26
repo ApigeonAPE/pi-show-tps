@@ -6,7 +6,14 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["biome.json", "package.json", "pnpm-workspace.yaml"]
+    "includes": [
+      "biome.json",
+      "package.json",
+      "pnpm-workspace.yaml",
+      "tsconfig.json",
+      "src/**/*.ts",
+      "tests/**/*.ts"
+    ]
   },
   "formatter": {
     "enabled": true,
